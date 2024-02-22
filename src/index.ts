@@ -95,15 +95,25 @@ cameraComponent.updateAspect()
 rendererComponent.postproduction.enabled = true
 
 const fragmentManager = new OBC.FragmentManager(viewer)
+
 function exportFragments(model: FragmentsGroup) {
   const fragmentBinary = fragmentManager.export(model)
-  const blob = new Blob([fragmentBinary])
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${model.name.replace(".ifc", "")}.frag`
-  a.click()
-  URL.revokeObjectURL(url)
+  const fragBlob = new Blob([fragmentBinary])
+  const fragUrl = URL.createObjectURL(fragBlob)
+  const fragLink = document.createElement('a')
+  fragLink.href = fragUrl
+  fragLink.download = `${model.name.replace(".ifc", "")}.frag`
+  fragLink.click()
+  URL.revokeObjectURL(fragUrl)
+  
+  const json = JSON.stringify(model.properties, null, 2) 
+  const propBlob = new Blob([json], { type: "application/json" })
+  const propUrl = URL.createObjectURL(propBlob)
+  const propLink = document.createElement('a')
+  propLink.href = propUrl
+  propLink.download = `${model.name.replace(".ifc", "")}.json`
+  propLink.click();
+  URL.revokeObjectURL(propUrl)
 }
 
 const ifcLoader = new OBC.FragmentIfcLoader(viewer)
@@ -164,7 +174,7 @@ async function onModelLoaded(model: FragmentsGroup) {
     const tree = await createModelTree()
     await classificationWindow.slots.content.dispose(true)
     classificationWindow.addChild(tree)
-  
+    
     propertiesProcessor.process(model)
     highlighter.events.select.onHighlight.add((fragmentMap) => {
       const expressID = [...Object.values(fragmentMap)[0]][0]
@@ -180,10 +190,31 @@ ifcLoader.onIfcLoaded.add(async (model) => {
   onModelLoaded(model)
 })
 
-fragmentManager.onFragmentsLoaded.add((model) => {
-  model.properties = {} //Get this from a JSON file exported from the IFC first load!
-  onModelLoaded(model)
+fragmentManager.onFragmentsLoaded.add(async (model) => {
+  importJSONProperties(model) // Added for challenge class 3.10.
+  if (!fragmentManager.baseCoordinationModel) {
+    fragmentManager.baseCoordinationModel = fragmentManager.groups[0].uuid
+  }
 })
+
+function importJSONProperties(model: FragmentsGroup) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'application/json'
+  const reader = new FileReader()
+  reader.addEventListener("load", () => {
+    const json = reader.result
+    if (!json) { return }
+    model.properties = JSON.parse(json as string)
+    onModelLoaded(model)
+  })
+  input.addEventListener('change', () => {
+    const filesList = input.files
+    if (!filesList) { return }
+    reader.readAsText(filesList[0])
+  })
+  input.click()
+}
 
 const importFragmentBtn = new OBC.Button(viewer)
 importFragmentBtn.materialIcon = "upload"
