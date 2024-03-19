@@ -28,6 +28,7 @@ const newProjectBtn = document.getElementById("new-project-btn");
 const closeErrorPopup = document.getElementById("close-error-popup");
 const closeTeamInfoPopup = document.getElementById("close-team-info-popup");
 const exportProjectsBtn = document.getElementById("export-projects-btn");
+const importProjectsBtn = document.getElementById("import-projects-btn")
 const navProjectsBtn = document.getElementById("nav-projects-btn");
 
 // ProjectsManager instance
@@ -147,8 +148,7 @@ if (exportProjectsBtn) {
     projectsManager.exportToJSON();
   });
 }
-
-const importProjectsBtn = document.getElementById("import-projects-btn")
+// Event listener for importing projects to JSON
 if (importProjectsBtn) {
   importProjectsBtn.addEventListener("click", () => {
     projectsManager.importFromJSON()
@@ -267,6 +267,14 @@ async function createModelTree() {
   return tree //Final result is the Fragment Tree
 }
 
+//IfcPropertiesFinder instance
+const propertiesFinder = new OBC.IfcPropertiesFinder(viewer)
+await propertiesFinder.init()
+
+propertiesFinder.onFound.add((fragmentIDMap) => {
+  highlighter.highlightByID("select", fragmentIDMap)
+})
+
 //Culler tool setup to optimize the viewer performace 
 const culler = new OBC.ScreenCuller(viewer)
 cameraComponent.controls.addEventListener("sleep", () => {
@@ -370,6 +378,7 @@ toolbar.addChild(
   classificationsBtn,
   propertiesProcessor.uiElement.get("main"),
   fragmentManager.uiElement.get("main"),
+  propertiesFinder.uiElement.get("main"),
   toDoCreator.uiElement.get("activationButton"),
   simpleQTO.uiElement.get("activationBtn")
 )

@@ -27,12 +27,8 @@ export class SimpleQTO extends OBC.Component<QtoResult> implements OBC.UI, OBC.D
             this.sumQuantities(fragmentIdMap)
         })
         highlighter.events.select.onClear.add(() => {
-            this.resetQuantities()
+            this.resetQto()
         })
-    }
-
-    resetQuantities() {
-        this._qtoResult = {}
     }
 
     private setUI() {
