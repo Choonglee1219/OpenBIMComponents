@@ -14,6 +14,8 @@ import {
 import { ProjectsManager } from "./classes/projectsManager";
 import { ToDoCreator } from './bim-components/ToDoCreator';
 import { SimpleQTO } from './bim-components/SimpleQTO';
+import { Postproduction } from 'openbim-components/navigation/PostproductionRenderer/src/postproduction';
+import { CustomEffectsPass } from 'openbim-components/navigation/PostproductionRenderer/src/custom-effects-pass';
 
 // DOM elements
 const projectsListUI = document.getElementById("projects-list") as HTMLElement;
@@ -159,7 +161,7 @@ if (importProjectsBtn) {
 if (projectsListUI) {
   projectsListUI.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
-    const projectId = target.dataset.projectId;    
+    const projectId = target.dataset.projectId;
     if (projectId) {
       const clickedProject = projectsManager.projectsList.find((project) => project.id === projectId);
       if (clickedProject) {
@@ -197,16 +199,17 @@ viewer.raycaster = raycasterComponent
 viewer.init()
 cameraComponent.updateAspect() //Camera aspect fix
 rendererComponent.postproduction.enabled = true //Outlines
+rendererComponent.postproduction.customEffects.outlineEnabled = true
 
 //Fragment manager tool setup
 const fragmentManager = new OBC.FragmentManager(viewer)
-function exportFragments(model:FragmentsGroup) { //Method to export Fragments Groups, Fragments group datatype is necessary
+function exportFragments(model: FragmentsGroup) { //Method to export Fragments Groups, Fragments group datatype is necessary
   const fragmentBinary = fragmentManager.export(model)
   const blob = new Blob([fragmentBinary])
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${model.name.replace(".ifc","")}.frag`
+  a.download = `${model.name.replace(".ifc", "")}.frag`
   a.click()
   URL.revokeObjectURL(url)
 
@@ -256,7 +259,7 @@ classificationsBtn.onClick.add(() => {
 async function createModelTree() {
   const fragmentTree = new OBC.FragmentTree(viewer) //Fragment tree tool setup, organizing information from classifier tool
   await fragmentTree.init()
-  await fragmentTree.update(["model","storeys", "entities"])
+  await fragmentTree.update(["model", "storeys", "entities"])
   fragmentTree.onHovered.add((fragmentMap) => { //On hover method for the fragment map
     highlighter.highlightByID("hover", fragmentMap)
   })
@@ -275,15 +278,34 @@ propertiesFinder.onFound.add((fragmentIDMap) => {
   highlighter.highlightByID("select", fragmentIDMap)
 })
 
-// SimpleClipper instance
-const simpleClipper = new OBC.SimpleClipper(viewer)
-simpleClipper.enabled = false
-viewerContainer.ondblclick = () => simpleClipper.create()
+// // SimpleClipper instance
+// const simpleClipper = new OBC.SimpleClipper(viewer)
+// simpleClipper.enabled = false
+// viewerContainer.ondblclick = () => {
+//   simpleClipper.create()
+// }
+// window.onkeydown = (event) => {
+//   if (event.code === 'Delete' || event.code === 'Backspace') {
+//     simpleClipper.delete()
+//   }
+// }
+
+// EdgeClipper instance
+const edgesClipper = new OBC.EdgesClipper(viewer)
+edgesClipper.enabled = false
+const clipperStyler = new OBC.FragmentClipStyler(viewer)
+await clipperStyler.setup()
+window.ondblclick = () => {
+  edgesClipper.create()
+}
 window.onkeydown = (event) => {
   if (event.code === 'Delete' || event.code === 'Backspace') {
-    simpleClipper.delete()
+    edgesClipper.delete();
   }
-}
+  if (event.code === 'KeyP') {
+    console.log(edgesClipper);
+  }
+};
 
 //Culler tool setup to optimize the viewer performace 
 const culler = new OBC.ScreenCuller(viewer)
@@ -293,8 +315,8 @@ cameraComponent.controls.addEventListener("sleep", () => {
 
 async function onModelLoaded(model: FragmentsGroup) {
   highlighter.update()
-  for (const fragment of model.items) {culler.add(fragment.mesh)}
-  culler.needsUpdate = true 
+  for (const fragment of model.items) { culler.add(fragment.mesh) }
+  culler.needsUpdate = true
   try {
     console.log(model)
     classifier.byModel(model.name, model) //Classifier tool setup once model is loaded
@@ -304,6 +326,7 @@ async function onModelLoaded(model: FragmentsGroup) {
     const tree = await createModelTree()
     await classificationWindow.slots.content.dispose(true)
     classificationWindow.addChild(tree)
+    await clipperStyler.update()  // indexing all the geometry by IFC category for the cilpperStyler
     propertiesProcessor.process(model) //IFC properties processor setup
     highlighter.events.select.onHighlight.add((fragmentMap) => { //Callback event to find the express ID of the selected element
       const expressID = [...Object.values(fragmentMap)[0]][0]
@@ -381,7 +404,7 @@ const simpleQTO = new SimpleQTO(viewer)
 await simpleQTO.setup()
 
 //Toolbar tool definition, addChild funciton adds buttons to it
-const toolbar = new OBC.Toolbar(viewer) 
+const toolbar = new OBC.Toolbar(viewer)
 toolbar.addChild(
   ifcLoader.uiElement.get("main"),
   importFragmentBtn,
@@ -389,8 +412,10 @@ toolbar.addChild(
   propertiesProcessor.uiElement.get("main"),
   fragmentManager.uiElement.get("main"),
   propertiesFinder.uiElement.get("main"),
-  simpleClipper.uiElement.get("main"),
   toDoCreator.uiElement.get("activationButton"),
   simpleQTO.uiElement.get("activationBtn"),
+  // simpleClipper.uiElement.get("main"),
+  edgesClipper.uiElement.get("main"),
+  clipperStyler.uiElement.get("mainButton")
 )
 viewer.ui.addToolbar(toolbar)
