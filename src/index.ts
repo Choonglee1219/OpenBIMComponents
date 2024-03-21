@@ -275,6 +275,16 @@ propertiesFinder.onFound.add((fragmentIDMap) => {
   highlighter.highlightByID("select", fragmentIDMap)
 })
 
+// SimpleClipper instance
+const simpleClipper = new OBC.SimpleClipper(viewer)
+simpleClipper.enabled = false
+viewerContainer.ondblclick = () => simpleClipper.create()
+window.onkeydown = (event) => {
+  if (event.code === 'Delete' || event.code === 'Backspace') {
+    simpleClipper.delete()
+  }
+}
+
 //Culler tool setup to optimize the viewer performace 
 const culler = new OBC.ScreenCuller(viewer)
 cameraComponent.controls.addEventListener("sleep", () => {
@@ -379,7 +389,8 @@ toolbar.addChild(
   propertiesProcessor.uiElement.get("main"),
   fragmentManager.uiElement.get("main"),
   propertiesFinder.uiElement.get("main"),
+  simpleClipper.uiElement.get("main"),
   toDoCreator.uiElement.get("activationButton"),
-  simpleQTO.uiElement.get("activationBtn")
+  simpleQTO.uiElement.get("activationBtn"),
 )
 viewer.ui.addToolbar(toolbar)
